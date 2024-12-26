@@ -56,11 +56,7 @@ class ScriptManagerApp:
         self.load_scripts()
 
     def load_scripts(self):
-
-        if not os.path.exists(self.SCRIPT_LIST_FILE):
-            messagebox.showerror("错误", f"脚本列表文件 {self.SCRIPT_LIST_FILE} 不存在！")
-
-        with open(self.SCRIPT_LIST_FILE, "r", encoding="utf-8") as file:
+        with open(self.SCRIPT_LIST_FILE, "w+", encoding="utf-8") as file:
             scripts = [line.strip() for line in file if line.strip()]
         self.scripts = scripts
         self.update_script_list()
