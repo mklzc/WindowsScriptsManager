@@ -5,8 +5,8 @@ from tkinter import messagebox
 
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-import threading
-
+from pystray import Icon, MenuItem, Menu
+from PIL import Image, ImageTk
 
 def run_script(script_path, params, selected_mode):
     try:
@@ -32,10 +32,6 @@ def run_script(script_path, params, selected_mode):
     except Exception as e:
         messagebox.showerror("错误", f"脚本运行失败：{e}")
 
-def bg_run_script(script_path, params):
-    thread = threading.Thread(target=run_script(script_path, params), daemon=True)
-    thread.start()
-
 class ScriptManagerApp:
     def __init__(self, _root):
 
@@ -48,12 +44,40 @@ class ScriptManagerApp:
         self.run_mode_var = tk.StringVar()
         self.param_entry = tk.Entry()
         self.run_mode_var.set("直接运行")
-
         self.scripts = []
         self.script_listbox = None
-
         self.create_ui()
         self.load_scripts()
+        self.tray_icon = None
+        self.create_tray_icon()
+        self._root.protocol("WM_DELETE_WINDOW", self.minimize_to_tray)
+
+    def create_tray_icon(self):
+        # 托盘图标的图标文件
+        image = Image.open("icon.ico")  # 确保提供一个有效的 .ico 文件
+
+        # 托盘菜单
+        menu = Menu(
+            MenuItem("显示窗口", self.restore_window),
+            MenuItem("退出", self.exit_app)
+        )
+
+        # 创建托盘图标
+        self.tray_icon = Icon("TkApp", image, "托盘图标示例", menu)
+        self.tray_icon.run_detached()
+
+    def minimize_to_tray(self):
+        self._root.withdraw()
+        if not self.tray_icon.visible:
+            self.tray_icon.run_detached()
+
+    def restore_window(self):
+        self._root.deiconify()
+        # if self.tray_icon is not None:
+        #     self.tray_icon.stop()
+        #     self.tray_icon = None
+    def exit_app(self):
+        self._root.destroy()
 
     def load_scripts(self):
         with open(self.SCRIPT_LIST_FILE, "w+", encoding="utf-8") as file:
