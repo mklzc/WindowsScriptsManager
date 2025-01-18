@@ -1,5 +1,6 @@
 import os
 import subprocess
+import threading
 import tkinter as tk
 from tkinter import messagebox
 
@@ -10,25 +11,28 @@ from PIL import Image, ImageTk
 
 def run_script(script_path, params, selected_mode):
     try:
-        ext = os.path.splitext(script_path)[1].lower()
-        if ext == ".py":
-            command = ["python", script_path] + params.split()
-        elif ext == ".sh":
-            command = ["bash", script_path] + params.split()
-        elif ext == ".ps1":
-            command = ["powershell", "-File", script_path] + params.split()
-        else:
-            command = [script_path] + params.split()
+        log_file = f"{os.path.basename(script_path)}.log"
 
-        if selected_mode == "直接运行":
-            subprocess.run(command, check=True)
-        else:
-            subprocess.Popen(
-                command,
-                creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+        with open(log_file, "w+") as logfile:
+            ext = os.path.splitext(script_path)[1].lower()
+            if ext == ".py":
+                command = ["python", script_path] + params.split()
+            elif ext == ".sh":
+                command = ["bash", script_path] + params.split()
+            elif ext == ".ps1":
+                command = ["powershell", "-File", script_path] + params.split()
+            else:
+                command = [script_path] + params.split()
+
+            if selected_mode == "直接运行":
+                subprocess.run(command, stdout=logfile, stderr=logfile, check=True)
+            else:
+                subprocess.Popen(
+                    command,
+                    creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
+                    stdout=logfile,
+                    stderr=logfile,
+                )
     except Exception as e:
         messagebox.showerror("错误", f"脚本运行失败：{e}")
 
@@ -59,29 +63,28 @@ class ScriptManagerApp:
         # 托盘菜单
         menu = Menu(
             MenuItem("显示窗口", self.restore_window),
-            MenuItem("退出", self.exit_app)
+            MenuItem("退出", action=self.exit_app)
         )
 
         # 创建托盘图标
         self.tray_icon = Icon("TkApp", image, "托盘图标示例", menu)
-        self.tray_icon.run_detached()
+        threading.Thread(target=self.tray_icon.run, daemon=True).start()
 
     def minimize_to_tray(self):
         self._root.withdraw()
-        if not self.tray_icon.visible:
-            self.tray_icon.run_detached()
 
     def restore_window(self):
         self._root.deiconify()
-        # if self.tray_icon is not None:
-        #     self.tray_icon.stop()
-        #     self.tray_icon = None
-    def exit_app(self):
+
+    def exit_app(self, icon: Icon):
+        icon.stop()
+        self._root.quit()
         self._root.destroy()
 
     def load_scripts(self):
-        with open(self.SCRIPT_LIST_FILE, "w+", encoding="utf-8") as file:
+        with open(self.SCRIPT_LIST_FILE, "r+", encoding="utf-8") as file:
             scripts = [line.strip() for line in file if line.strip()]
+
         self.scripts = scripts
         self.update_script_list()
 
@@ -105,6 +108,8 @@ class ScriptManagerApp:
         # 脚本列表
         self.script_listbox = tk.Listbox(self._root, height=10, width=50)
         self.script_listbox.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+
+        self.script_listbox.bind("<Double-1>", self.view_log)
 
         # 运行模式选择
         run_mode_combobox = ttk.Combobox(
@@ -137,6 +142,36 @@ class ScriptManagerApp:
 
         script_path = self.scripts[selected_index[0]]
         run_script(script_path, params, selected_mode)
+
+    def view_log(self, event):
+        selected_index = self.script_listbox.curselection()
+        if not selected_index:
+            messagebox.showwarning("提示", "请先选择一个脚本")
+            return
+
+        script_path = self.scripts[selected_index[0]]
+        log_file = f"{os.path.basename(script_path)}.log"
+        if not os.path.exists(log_file):
+            messagebox.showwarning("提示", "该脚本还没有生成日志文件")
+            return
+
+        log_window = tk.Toplevel(self._root)
+        log_window.title(f"{os.path.basename(script_path)} 日志")
+        log_window.geometry("1000x600")
+        text_area = tk.Text(log_window, wrap="none")
+        text_area.pack(fill=tk.BOTH, expand=True)
+
+        with open(log_file, "r") as logfile:
+            text_area.insert("1.0", logfile.read())
+
+        def refresh_log():
+            with open(log_file, "r") as logfile:
+                text_area.delete("1.0", tk.END)
+                text_area.insert("1.0", logfile.read())
+
+        refresh_button = ttk.Button(log_window, text="刷新", command=refresh_log)
+        refresh_button.pack(side="bottom", pady=10)
+
 
 if __name__ == "__main__":
     _root = ttk.Window()
