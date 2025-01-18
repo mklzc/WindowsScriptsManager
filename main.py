@@ -38,11 +38,11 @@ def run_script(script_path, params, selected_mode):
 
 class ScriptManagerApp:
     def __init__(self, _root):
-
         self.SCRIPT_LIST_FILE = "scripts.txt"
         self._root = _root
         self._root.title("Script Manager")
         self._root.geometry("1000x600")
+        self._root.iconbitmap("icon.ico")
         self.style = ttk.Style(theme="minty")
 
         self.run_mode_var = tk.StringVar()
@@ -165,9 +165,9 @@ class ScriptManagerApp:
             text_area.insert("1.0", logfile.read())
 
         def refresh_log():
-            with open(log_file, "r") as logfile:
+            with open(log_file, "r") as f:
                 text_area.delete("1.0", tk.END)
-                text_area.insert("1.0", logfile.read())
+                text_area.insert("1.0", f.read())
 
         refresh_button = ttk.Button(log_window, text="刷新", command=refresh_log)
         refresh_button.pack(side="bottom", pady=10)
@@ -175,5 +175,6 @@ class ScriptManagerApp:
 
 if __name__ == "__main__":
     _root = ttk.Window()
+
     app = ScriptManagerApp(_root)
     _root.mainloop()
