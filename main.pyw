@@ -7,7 +7,7 @@ from tkinter import messagebox
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from pystray import Icon, MenuItem, Menu
-from PIL import Image, ImageTk
+from PIL import Image
 
 def run_script(script_path, params, selected_mode):
     try:
@@ -190,7 +190,7 @@ class ScriptManagerApp:
                 logfile.write("")
             messagebox.showinfo("提示", f"{os.path.basename(script_path)}的日志已清空")
         except Exception as e:
-            messagebox.showerror("错误", "无法清空日志文件")
+            messagebox.showerror("错误", f"无法清空日志文件{e}")
 
     def show_script_context_menu(self, event):
         try:
