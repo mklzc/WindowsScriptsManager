@@ -38,6 +38,7 @@ def run_script(script_path, params, selected_mode):
 
 class ScriptManagerApp:
     def __init__(self, _root):
+        self.script_list_context_menu = None
         self.SCRIPT_LIST_FILE = "scripts.txt"
         self._root = _root
         self._root.title("Script Manager")
@@ -109,7 +110,11 @@ class ScriptManagerApp:
         self.script_listbox = tk.Listbox(self._root, height=10, width=50)
         self.script_listbox.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
 
-        self.script_listbox.bind("<Double-1>", self.view_log)
+        # 右键菜单
+        self.script_list_context_menu = tk.Menu(self._root, tearoff=0)
+        self.script_list_context_menu.add_command(label="清空日志", command=self.clear_selected_script_log)
+        self.script_list_context_menu.add_command(label="显示日志", command=self.view_log)
+        self.script_listbox.bind("<Button-3>", self.show_script_context_menu)
 
         # 运行模式选择
         run_mode_combobox = ttk.Combobox(
@@ -143,7 +148,7 @@ class ScriptManagerApp:
         script_path = self.scripts[selected_index[0]]
         run_script(script_path, params, selected_mode)
 
-    def view_log(self, event):
+    def view_log(self):
         selected_index = self.script_listbox.curselection()
         if not selected_index:
             messagebox.showwarning("提示", "请先选择一个脚本")
@@ -158,8 +163,8 @@ class ScriptManagerApp:
         log_window = tk.Toplevel(self._root)
         log_window.title(f"{os.path.basename(script_path)} 日志")
         log_window.geometry("1000x600")
-        text_area = tk.Text(log_window, wrap="none")
-        text_area.pack(fill=tk.BOTH, expand=True)
+        text_area = tk.Text(log_window, wrap="word", height=15)
+        text_area.pack(fill="x", padx=10, pady=10)
 
         with open(log_file, "r") as logfile:
             text_area.insert("1.0", logfile.read())
@@ -170,7 +175,32 @@ class ScriptManagerApp:
                 text_area.insert("1.0", f.read())
 
         refresh_button = ttk.Button(log_window, text="刷新", command=refresh_log)
-        refresh_button.pack(side="bottom", pady=10)
+        refresh_button.pack(side="bottom", pady=5)
+
+    def clear_selected_script_log(self):
+        selected_index = self.script_listbox.curselection()
+        if not selected_index:
+            messagebox.showwarning("提示", "请先选择一个脚本")
+            return
+
+        script_path = self.scripts[selected_index[0]]
+        log_file = f"{os.path.basename(script_path)}.log"
+        try:
+            with open(log_file, "w") as logfile:
+                logfile.write("")
+            messagebox.showinfo("提示", f"{os.path.basename(script_path)}的日志已清空")
+        except Exception as e:
+            messagebox.showerror("错误", "无法清空日志文件")
+
+    def show_script_context_menu(self, event):
+        try:
+            index = self.script_listbox.nearest(event.y)
+            self.script_listbox.selection_clear(0, tk.END)
+            self.script_listbox.selection_set(index)
+            self.script_listbox.activate(index)
+            self.script_list_context_menu.post(event.x_root, event.y_root)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
